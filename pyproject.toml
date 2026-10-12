@@ -1,6 +1,6 @@
 [project]
 name = "gmail-multi-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Open-source MCP server that connects multiple Gmail accounts to Claude and other MCP clients"
 readme = "README.md"
 license = { text = "MIT" }
@@ -10,6 +10,8 @@ dependencies = [
     "google-api-python-client>=2.100.0",
     "google-auth>=2.23.0",
     "google-auth-oauthlib>=1.1.0",
+    "google-auth-httplib2>=0.2.0",
+    "httplib2>=0.22.0",
 ]
 
 [project.scripts]
