@@ -13,9 +13,12 @@ from __future__ import annotations
 import json
 import os
 import threading
+import time
 from pathlib import Path
 
+import httplib2
 from google.auth.transport.requests import Request
+from google_auth_httplib2 import AuthorizedHttp
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -116,16 +119,21 @@ def _label(email: str, meta: dict) -> str:
     return f"{email} ({meta['alias']})" if meta.get("alias") else email
 
 
-_services: dict[str, object] = {}
+# Clients are reused only briefly: an idle keep-alive connection goes stale when
+# the Mac sleeps or changes network, and reusing it fails with OSError.
+_SERVICE_TTL = 60
+_HTTP_TIMEOUT = 30
+_services: dict[str, tuple[float, object]] = {}
 _lock = threading.Lock()
 
 
 def service_for(name: str):
-    """Return an authorized Gmail API client for the account (cached)."""
+    """Return an authorized Gmail API client for the account (cached briefly)."""
     email = resolve(name)
     with _lock:
-        if email in _services:
-            return _services[email]
+        cached = _services.get(email)
+        if cached and time.monotonic() - cached[0] < _SERVICE_TTL:
+            return cached[1]
         token_path = _token_file(email)
         if not token_path.exists():
             raise ValueError(f"No token for {email}. Run: gmail-multi-mcp add")
@@ -136,9 +144,16 @@ def service_for(name: str):
                 _write_private(token_path, creds.to_json())
             else:
                 raise ValueError(f"Token for {email} is invalid. Re-run: gmail-multi-mcp add")
-        svc = build("gmail", "v1", credentials=creds, cache_discovery=False)
-        _services[email] = svc
+        http = AuthorizedHttp(creds, http=httplib2.Http(timeout=_HTTP_TIMEOUT))
+        svc = build("gmail", "v1", http=http, cache_discovery=False)
+        _services[email] = (time.monotonic(), svc)
         return svc
+
+
+def reset_connections() -> None:
+    """Drop cached clients so the next call opens fresh connections."""
+    with _lock:
+        _services.clear()
 
 
 def is_read_only(name: str) -> bool:
