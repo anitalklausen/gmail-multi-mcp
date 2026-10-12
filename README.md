@@ -10,12 +10,15 @@ An open-source [MCP](https://modelcontextprotocol.io) server that connects **any
 | `search_emails` | Runs a Gmail search query on **one account or all of them at once** |
 | `read_email` / `read_thread` | Reads one message or a whole conversation as plain text, with a list of attachments |
 | `list_labels` | Lists the labels for an account |
-| `send_email` | Sends mail from a chosen account, including threaded replies |
+| `list_send_as` | Lists the addresses an account can send from (Gmail's "Send mail as") |
+| `send_email` | Sends mail from a chosen account, including threaded replies. `from_address` picks one of the account's "Send mail as" addresses |
 | `create_draft` | Saves a draft instead of sending |
 | `modify_labels` | Marks mail read or unread, archives, stars, or adds and removes labels |
 | `trash_email` | Moves a message to Trash (recoverable) |
 
 Every tool takes an `account` argument, which can be the full email address or an alias such as `work`.
+
+**Sender addresses:** if an account has extra addresses under Gmail's *Settings → Accounts → Send mail as*, `send_email` and `create_draft` can send from any of them with `from_address`. Without it, a reply goes out from the address the original was sent to, and a new mail goes out from Gmail's default sender.
 
 ## 1. Create a Google OAuth client (once)
 
